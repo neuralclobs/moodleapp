@@ -33,7 +33,6 @@ import {
     CoreCourseAnyCourseData,
     CoreCourses,
 } from '../../courses/services/courses';
-import { CoreDomUtils } from '@services/utils/dom';
 import { CoreWSError } from '@classes/errors/wserror';
 import { CoreCourseHelper, CoreCourseModuleData, CoreCourseModuleCompletionData } from './course-helper';
 import { CoreCourseFormatDelegate } from './format-delegate';
@@ -67,6 +66,9 @@ import { CoreObject } from '@singletons/object';
 import { CoreAlerts } from '@services/overlays/alerts';
 import { CoreCourseModuleHelper, CoreCourseStoreModuleViewedOptions } from './course-module-helper';
 import { CoreCourseDownloadStatusHelper } from './course-download-status-helper';
+import { MAIN_MENU_HOME_PAGE_NAME } from '@features/mainmenu/constants';
+import { CORE_SITEHOME_PAGE_NAME } from '@features/sitehome/constants';
+import { CoreDom } from '@singletons/dom';
 
 export type CoreCourseProgressUpdated = { progress: number; courseId: number };
 
@@ -460,7 +462,7 @@ export class CoreCourseProvider {
      *
      * @param moduleId The module ID.
      * @param courseId The course ID. Recommended to speed up the process and minimize data usage.
-     * @param sectionId The section ID.
+     * @param sectionId Not used since 5.0
      * @param preferCache True if shouldn't call WS if data is cached, false otherwise.
      * @param ignoreCache True if it should ignore cached data (it will always fail in offline or server down).
      * @param siteId Site ID. If not defined, current site.
@@ -552,7 +554,6 @@ export class CoreCourseProvider {
                 { siteId, readingStrategy: CoreSitesReadingStrategy.PREFER_CACHE },
             );
             courseId = module.course;
-            sectionId = module.section;
         }
 
         const site = await CoreSites.getSite(siteId);
@@ -583,14 +584,7 @@ export class CoreCourseProvider {
         let foundModule: CoreCourseGetContentsWSModule | undefined;
 
         const foundSection = sections.find((section) => {
-            if (section.id != CORE_COURSE_STEALTH_MODULES_SECTION_ID &&
-                sectionId !== undefined &&
-                sectionId != section.id
-            ) {
-                return false;
-            }
-
-            foundModule = section.modules.find((module) => module.id == moduleId);
+            foundModule = section.modules.find((module) => module.id === moduleId);
 
             return !!foundModule;
         });
@@ -639,7 +633,7 @@ export class CoreCourseProvider {
      * Gets a module basic info by module ID.
      *
      * @param moduleId Module ID.
-     * @param options Comon site WS options.
+     * @param options Common site WS options.
      * @returns Promise resolved with the module's info.
      */
     async getModuleBasicInfo(moduleId: number, options: CoreSitesCommonWSOptions = {}): Promise<CoreCourseModuleBasicInfo> {
@@ -664,12 +658,12 @@ export class CoreCourseProvider {
     /**
      * Gets a module basic grade info by module ID.
      *
-     * @param moduleId Module ID.
+     * @param cmId Module ID.
      * @param siteId Site ID. If not defined, current site.
      * @returns Promise resolved with the module's grade info.
      */
-    async getModuleBasicGradeInfo(moduleId: number, siteId?: string): Promise<CoreCourseModuleGradeInfo | undefined> {
-        const info = await this.getModuleBasicInfo(moduleId, { siteId });
+    async getModuleBasicGradeInfo(cmId: number, siteId?: string): Promise<CoreCourseModuleGradeInfo | undefined> {
+        const info = await this.getModuleBasicInfo(cmId, { siteId });
 
         if (
             info.grade !== undefined ||
@@ -717,13 +711,14 @@ export class CoreCourseProvider {
         const response: CoreCourseGetCourseModuleWSResponse =
             await site.read('core_course_get_course_module_by_instance', params, preSets);
 
-        if (response.warnings && response.warnings.length) {
+        if (response.warnings?.length) {
             throw new CoreWSError(response.warnings[0]);
-        } else if (response.cm) {
-            return response.cm;
+        }
+        if (!response.cm) {
+            throw Error('WS core_course_get_course_module_by_instance failed');
         }
 
-        throw Error('WS core_course_get_course_module_by_instance failed');
+        return response.cm;
     }
 
     /**
@@ -1085,7 +1080,7 @@ export class CoreCourseProvider {
      *
      * @param module Module to load the contents.
      * @param courseId Not used since 4.0.
-     * @param sectionId The section ID.
+     * @param sectionId Not used since 5.0
      * @param preferCache True if shouldn't call WS if data is cached, false otherwise.
      * @param ignoreCache True if it should ignore cached data (it will always fail in offline or server down).
      * @param siteId Site ID. If not defined, current site.
@@ -1141,7 +1136,7 @@ export class CoreCourseProvider {
         modName?: string,
     ): Promise<CoreCourseModuleContentFile[]> {
         // Make sure contents are loaded.
-        await this.loadModuleContents(module, undefined, sectionId, preferCache, ignoreCache, siteId, modName);
+        await this.loadModuleContents(module, module.course, undefined, preferCache, ignoreCache, siteId, modName);
 
         if (!module.contents) {
             throw new CoreError(Translate.instant('core.course.modulenotfound'));
@@ -1310,7 +1305,7 @@ export class CoreCourseProvider {
     ): Promise<void> {
         if (course.id === CoreSites.getCurrentSite()?.getSiteHomeId()) {
             // Open site home.
-            await CoreNavigator.navigate('/main/home/site', navOptions);
+            await CoreNavigator.navigate(`/main/${MAIN_MENU_HOME_PAGE_NAME}/${CORE_SITEHOME_PAGE_NAME}`, navOptions);
 
             return;
         }
@@ -1444,7 +1439,7 @@ export class CoreCourseProvider {
         }
 
         // Remove "Show more" option in 4.2 or older sites.
-        return CoreDomUtils.removeElementFromHtml(availabilityInfo, 'li[data-action="showmore"]');
+        return CoreDom.removeElementFromHtml(availabilityInfo, 'li[data-action="showmore"]');
     }
 
 }
@@ -1474,34 +1469,6 @@ export type CoreCourseCommonModWSOptions = CoreSitesCommonWSOptions & {
  * Common options used by modules when calling a WS through CoreSite, including an option to determine if text should be filtered.
  */
 export type CoreCourseCommonModWSOptionsWithFilter = CoreCourseCommonModWSOptions & CoreSitesWSOptionsWithFilter;
-
-/**
- * Data returned by course_summary_exporter.
- */
-export type CoreCourseSummary = {
-    id: number; // Id.
-    fullname: string; // Fullname.
-    shortname: string; // Shortname.
-    idnumber: string; // Idnumber.
-    summary: string; // Summary.
-    summaryformat: CoreTextFormat; // Summary format (1 = HTML, 0 = MOODLE, 2 = PLAIN or 4 = MARKDOWN).
-    startdate: number; // Startdate.
-    enddate: number; // Enddate.
-    visible: boolean; // @since 3.8. Visible.
-    fullnamedisplay: string; // Fullnamedisplay.
-    viewurl: string; // Viewurl.
-    courseimage: string; // @since 3.6. Courseimage.
-    progress?: number; // @since 3.6. Progress.
-    hasprogress: boolean; // @since 3.6. Hasprogress.
-    isfavourite: boolean; // @since 3.6. Isfavourite.
-    hidden: boolean; // @since 3.6. Hidden.
-    timeaccess?: number; // @since 3.6. Timeaccess.
-    showshortname: boolean; // @since 3.6. Showshortname.
-    coursecategory: string; // @since 3.7. Coursecategory.
-    showactivitydates: boolean | null; // @since 3.11. Whether the activity dates are shown or not.
-    showcompletionconditions: boolean | null; // @since 3.11. Whether the activity completion conditions are shown or not.
-    timemodified?: number; // @since 4.0. Last time course settings were updated (timestamp).
-};
 
 /**
  * Data returned by course_module_summary_exporter.
@@ -1674,6 +1641,16 @@ export type CoreCourseGetContentsWSModule = {
     indent: number; // Number of identation in the site.
     onclick?: string; // Onclick action.
     afterlink?: string; // After link info to be displayed.
+    activitybadge?: { // @since 4.3. Activity badge to display near the name.
+        badgecontent?: string; // The content to be displayed in the activity badge.
+        badgestyle?: string; // The style for the activity badge.
+        badgeurl?: string; // An optional URL to redirect the user when the activity badge is clicked.
+        badgeelementid?: string; // An optional id in case the module wants to add some code for the activity badge.
+        badgeextraattributes?: { // An optional array of extra HTML attributes to add to the badge element.
+            name?: string; // The attribute name.
+            value?: string; // The attribute value.
+        }[];
+    };
     customdata?: string; // Custom data (JSON encoded).
     noviewlink?: boolean; // Whether the module has no view page.
     completion?: CoreCourseModuleCompletionTracking; // Type of completion tracking: 0 means none, 1 manual, 2 automatic.
@@ -1681,10 +1658,12 @@ export type CoreCourseGetContentsWSModule = {
     contents?: CoreCourseModuleContentFile[];
     groupmode?: number; // @since 4.3. Group mode value
     downloadcontent?: number; // @since 4.0 The download content value.
-    dates?: {
-        label: string;
-        timestamp: number;
-    }[]; // @since 3.11. Activity dates.
+    dates?: { // @since 3.11. Course dates.
+        label: string; // Date label.
+        timestamp: number; // Date timestamp.
+        relativeto?: number; // @since 4.1. Relative date timestamp.
+        dataid?: string; // @since 4.1. Cm data id.
+    }[];
     contentsinfo?: { // @since v3.7.6 Contents summary information.
         filescount: number; // Total number of files.
         filessize: number; // Total files size.
@@ -1769,10 +1748,10 @@ export type CoreCourseModuleContentFile = {
     filename: string; // Filename.
     filepath: string; // Filepath.
     filesize: number; // Filesize.
-    fileurl: string; // Downloadable file url.
+    fileurl: string; // Downloadable file url. Required field.
     timemodified: number; // Time modified.
     mimetype?: string; // File mime type.
-    isexternalfile?: number; // Whether is an external file.
+    isexternalfile?: boolean; // Whether is an external file.
     repositorytype?: string; // The repository type for external files.
 
     type: string; // A file or a folder or external link.

@@ -1491,12 +1491,13 @@ export type AddonModWorkshopData = {
     name: string; // Workshop name.
     intro: string; // Workshop introduction text.
     introformat?: CoreTextFormat; // Intro format (1 = HTML, 0 = MOODLE, 2 = PLAIN or 4 = MARKDOWN).
+    lang: string; // Forced activity language.
     instructauthors?: string; // Instructions for the submission phase.
     instructauthorsformat?: CoreTextFormat; // Instructauthors format (1 = HTML, 0 = MOODLE, 2 = PLAIN or 4 = MARKDOWN).
     instructreviewers?: string; // Instructions for the assessment phase.
     instructreviewersformat?: CoreTextFormat; // Instructreviewers format (1 = HTML, 0 = MOODLE, 2 = PLAIN or 4 = MARKDOWN).
     timemodified?: number; // The timestamp when the module was modified.
-    phase: AddonModWorkshopPhase; // The current phase of workshop.
+    phase: AddonModWorkshopPhase; // The current phase of workshop. Wrong description and value is required (See MDL-84993).
     useexamples?: boolean; // Optional feature: students practise evaluating on example submissions from teacher.
     usepeerassessment?: boolean; // Optional feature: students perform peer assessment of others' work.
     useselfassessment?: boolean; // Optional feature: students perform self assessment of their own work.

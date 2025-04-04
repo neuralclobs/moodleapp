@@ -183,8 +183,8 @@ export class CoreSettingsHelperProvider {
             spaceUsage: 0,
         };
 
-        siteInfo.cacheEntries = await this.calcSiteClearRows(site);
-        siteInfo.spaceUsage = await site.getTotalUsage();
+        siteInfo.cacheEntries = await CorePromiseUtils.ignoreErrors(this.calcSiteClearRows(site), 0);
+        siteInfo.spaceUsage = await CorePromiseUtils.ignoreErrors(site.getTotalUsage(), 0);
 
         return siteInfo;
     }
@@ -517,6 +517,17 @@ export class CoreSettingsHelperProvider {
 
         await CoreNavigator.navigate('/');
         window.location.reload();
+    }
+
+    /**
+     * Check if rich text editor is enabled.
+     *
+     * @returns Promise resolved with boolean: true if enabled, false otherwise.
+     */
+    async isRichTextEditorEnabled(): Promise<boolean> {
+        const enabled = await CoreConfig.get(CoreConstants.SETTINGS_RICH_TEXT_EDITOR, true);
+
+        return !!enabled;
     }
 
 }

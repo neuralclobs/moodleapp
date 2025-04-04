@@ -18,3 +18,6 @@ export const ADDONS_NOTIFICATIONS_READ_CRON_EVENT = 'addon_notifications_read_cr
 export const ADDONS_NOTIFICATIONS_PUSH_SIMULATION_COMPONENT = 'AddonNotificationsPushSimulation';
 
 export const ADDONS_NOTIFICATIONS_LIST_LIMIT = 20;
+
+export const ADDONS_NOTICATIONS_MAIN_PAGE_NAME = 'notifications';
+export const ADDONS_NOTICATIONS_SETTINGS_PAGE_NAME = 'notifications';

@@ -15,20 +15,20 @@
 import { Injectable } from '@angular/core';
 import { CoreSites, CoreSitesCommonWSOptions } from '@services/sites';
 import { CoreTagItem } from '@features/tag/services/tag';
-import { CoreWSExternalWarning, CoreWSExternalFile, CoreWS } from '@services/ws';
+import { CoreWSExternalWarning, CoreWS } from '@services/ws';
 import { makeSingleton } from '@singletons';
 import { CoreCourseLogHelper } from '@features/course/services/log-helper';
 import { CoreCourse, CoreCourseModuleContentFile } from '@features/course/services/course';
 import { CorePromiseUtils } from '@singletons/promise-utils';
 import { CoreFilepool } from '@services/filepool';
-import { CoreText, CoreTextFormat } from '@singletons/text';
-import { CoreDomUtils } from '@services/utils/dom';
+import { CoreText } from '@singletons/text';
+import { CoreDom } from '@singletons/dom';
 import { CoreError } from '@classes/errors/error';
 import { CoreSiteWSPreSets } from '@classes/sites/authenticated-site';
 import { ADDON_MOD_BOOK_COMPONENT } from '../constants';
 import { CoreUrl } from '@singletons/url';
 import { CoreCacheUpdateFrequency } from '@/core/constants';
-import { CoreCourseModuleHelper } from '@features/course/services/course-module-helper';
+import { CoreCourseModuleHelper, CoreCourseModuleStandardElements } from '@features/course/services/course-module-helper';
 
 /**
  * Service that provides some features for books.
@@ -96,7 +96,7 @@ export class AddonModBookProvider {
         const content = await CoreWS.getText(url);
 
         // Now that we have the content, we update the SRC to point back to the external resource.
-        return CoreDomUtils.restoreSourcesInHtml(content, contentsMap[chapterId].paths);
+        return CoreDom.restoreSourcesInHtml(content, contentsMap[chapterId].paths);
     }
 
     /**
@@ -383,24 +383,13 @@ export type AddonModBookContentsMap = {
 /**
  * Book returned by mod_book_get_books_by_courses.
  */
-export type AddonModBookBookWSData = {
-    id: number; // Book id.
-    coursemodule: number; // Course module id.
-    course: number; // Course id.
-    name: string; // Book name.
-    intro: string; // The Book intro.
-    introformat: CoreTextFormat; // Intro format (1 = HTML, 0 = MOODLE, 2 = PLAIN or 4 = MARKDOWN).
-    introfiles?: CoreWSExternalFile[];
+export type AddonModBookBookWSData = CoreCourseModuleStandardElements & {
     numbering: number; // Book numbering configuration.
     navstyle: number; // Book navigation style configuration.
     customtitles: number; // Book custom titles type.
     revision?: number; // Book revision.
     timecreated?: number; // Time of creation.
     timemodified?: number; // Time of last modification.
-    section?: number; // Course section id.
-    visible?: boolean; // Visible.
-    groupmode?: number; // Group mode.
-    groupingid?: number; // Group id.
 };
 
 /**

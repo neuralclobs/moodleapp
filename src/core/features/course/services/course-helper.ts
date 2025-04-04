@@ -64,7 +64,6 @@ import { CoreFilterHelper } from '@features/filter/services/filter-helper';
 import { CoreNetworkError } from '@classes/errors/network-error';
 import { CoreSiteHome } from '@features/sitehome/services/sitehome';
 import { CoreNavigationOptions, CoreNavigator } from '@services/navigator';
-import { CoreSiteHomeHomeHandlerService } from '@features/sitehome/services/handlers/sitehome-home';
 import { CoreStatusWithWarningsWSResponse } from '@services/ws';
 import { CoreCourseWithImageAndColor } from '@features/courses/services/courses-helper';
 import { CoreRemindersPushNotificationData } from '@features/reminders/services/reminders';
@@ -85,6 +84,7 @@ import { CorePromiseUtils } from '@singletons/promise-utils';
 import { CoreOpener, CoreOpenerOpenFileOptions } from '@singletons/opener';
 import { CoreAlerts } from '@services/overlays/alerts';
 import { CoreCourseDownloadStatusHelper } from './course-download-status-helper';
+import { CORE_SITEHOME_PAGE_NAME } from '@features/sitehome/constants';
 
 /**
  * Prefetch info of a module.
@@ -1434,26 +1434,24 @@ export class CoreCourseHelperProvider {
     ): Promise<void> {
         const siteId = options.siteId || CoreSites.getCurrentSiteId();
         let courseId = options.courseId;
-        let sectionId = options.sectionId;
 
         const modal = await CoreLoadings.show();
 
         try {
-            if (!courseId || !sectionId) {
+            if (!courseId) {
                 const module = await CoreCourse.getModuleBasicInfo(
                     moduleId,
                     { siteId, readingStrategy: CoreSitesReadingStrategy.PREFER_CACHE },
                 );
 
                 courseId = module.course;
-                sectionId = module.section;
             }
 
             // Get the site.
             const site = await CoreSites.getSite(siteId);
 
             // Get the module.
-            const module = await CoreCourse.getModule(moduleId, courseId, sectionId, false, false, siteId, options.modName);
+            const module = await CoreCourse.getModule(moduleId, courseId, undefined, false, false, siteId, options.modName);
 
             if (CoreSites.getCurrentSiteId() === site.getId()) {
                 // Try to use the module's handler to navigate cleanly.
@@ -1461,7 +1459,7 @@ export class CoreCourseHelperProvider {
                     module.modname,
                     module,
                     courseId,
-                    sectionId,
+                    module.section,
                     false,
                 );
 
@@ -1475,7 +1473,6 @@ export class CoreCourseHelperProvider {
             const params: Params = {
                 course: { id: courseId },
                 module,
-                sectionId,
                 modNavOptions: options.modNavOptions,
             };
 
@@ -1484,13 +1481,15 @@ export class CoreCourseHelperProvider {
                 const isAvailable = await CoreSiteHome.isAvailable();
 
                 if (isAvailable) {
-                    await CoreNavigator.navigateToSitePath(CoreSiteHomeHomeHandlerService.PAGE_NAME, { params, siteId });
+                    await CoreNavigator.navigateToSitePath(CORE_SITEHOME_PAGE_NAME, { params, siteId });
 
                     return;
                 }
             }
 
             modal.dismiss();
+
+            params.sectionId = module.section;
 
             await this.getAndOpenCourse(courseId, params, siteId);
         } catch (error) {

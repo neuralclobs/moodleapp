@@ -14,18 +14,17 @@
 
 import { Injectable } from '@angular/core';
 import { CoreSites, CoreSitesCommonWSOptions } from '@services/sites';
-import { CoreWSExternalWarning, CoreWSExternalFile } from '@services/ws';
+import { CoreWSExternalWarning } from '@services/ws';
 import { makeSingleton } from '@singletons';
 import { CoreCacheUpdateFrequency } from '@/core/constants';
-import { CoreMimetypeUtils } from '@services/utils/mimetype';
+import { CoreMimetype } from '@singletons/mimetype';
 import { CoreCourse } from '@features/course/services/course';
 import { CorePromiseUtils } from '@singletons/promise-utils';
 import { CoreCourseLogHelper } from '@features/course/services/log-helper';
 import { CoreSiteWSPreSets } from '@classes/sites/authenticated-site';
 import { ADDON_MOD_URL_COMPONENT_LEGACY } from '../constants';
-import { CoreTextFormat } from '@singletons/text';
 import { ModResourceDisplay } from '@addons/mod/constants';
-import { CoreCourseModuleHelper } from '@features/course/services/course-module-helper';
+import { CoreCourseModuleHelper, CoreCourseModuleStandardElements } from '@features/course/services/course-module-helper';
 
 /**
  * Service that provides some features for urls.
@@ -46,7 +45,7 @@ export class AddonModUrlProvider {
             return -1;
         }
 
-        const extension = CoreMimetypeUtils.guessExtensionFromUrl(url.externalurl);
+        const extension = CoreMimetype.guessExtensionFromUrl(url.externalurl);
 
         // PDFs can be embedded in web, but not in the Mobile app.
         if (url.display === ModResourceDisplay.EMBED && extension === 'pdf') {
@@ -67,7 +66,7 @@ export class AddonModUrlProvider {
         }
 
         const download = ['application/zip', 'application/x-tar', 'application/g-zip', 'application/pdf', 'text/html'];
-        let mimetype = CoreMimetypeUtils.getMimeType(extension);
+        let mimetype = CoreMimetype.getMimeType(extension);
 
         if (url.externalurl.indexOf('.php') != -1 || url.externalurl.slice(-1) === '/' ||
                 (url.externalurl.indexOf('//') != -1 && url.externalurl.match(/\//g)?.length == 2)) {
@@ -79,7 +78,7 @@ export class AddonModUrlProvider {
             return ModResourceDisplay.DOWNLOAD;
         }
 
-        if (extension && CoreMimetypeUtils.canBeEmbedded(extension)) {
+        if (extension && CoreMimetype.canBeEmbedded(extension)) {
             return ModResourceDisplay.EMBED;
         }
 
@@ -134,18 +133,20 @@ export class AddonModUrlProvider {
         url = url || '';
 
         const matches = url.match(/\//g);
-        const extension = CoreMimetypeUtils.guessExtensionFromUrl(url);
+        const extension = CoreMimetype.guessExtensionFromUrl(url);
 
-        if (!matches || matches.length < 3 || url.slice(-1) === '/' || extension == 'php') {
+        if (!matches || matches.length < 3 || url.slice(-1) === '/' || extension === 'php') {
             // Use default icon.
             return '';
         }
 
-        const icon = CoreMimetypeUtils.getExtensionIcon(extension ?? '');
+        const site = CoreSites.getCurrentSite();
+
+        const icon = CoreMimetype.getExtensionIcon(extension ?? '', site);
 
         // We do not want to return those icon types, the module icon is more appropriate.
-        if (icon === CoreMimetypeUtils.getFileIconForType('unknown') ||
-            icon === CoreMimetypeUtils.getFileIconForType('html')) {
+        if (icon === CoreMimetype.getFileIconForType('unknown', site) ||
+            icon === CoreMimetype.getFileIconForType('html', site)) {
             return '';
         }
 
@@ -223,23 +224,12 @@ type AddonModUrlViewUrlWSParams = {
 /**
  * URL returnd by mod_url_get_urls_by_courses.
  */
-export type AddonModUrlUrl = {
-    id: number; // Module id.
-    coursemodule: number; // Course module id.
-    course: number; // Course id.
-    name: string; // URL name.
-    intro: string; // Summary.
-    introformat: CoreTextFormat; // Intro format (1 = HTML, 0 = MOODLE, 2 = PLAIN or 4 = MARKDOWN).
-    introfiles: CoreWSExternalFile[];
+export type AddonModUrlUrl = CoreCourseModuleStandardElements & {
     externalurl: string; // External URL.
     display: ModResourceDisplay; // How to display the url.
     displayoptions: string; // Display options (width, height).
     parameters: string; // Parameters to append to the URL.
     timemodified: number; // Last time the url was modified.
-    section: number; // Course section id.
-    visible: number; // Module visibility.
-    groupmode: number; // Group mode.
-    groupingid: number; // Grouping id.
 };
 
 /**
